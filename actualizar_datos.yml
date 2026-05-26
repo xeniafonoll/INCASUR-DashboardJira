@@ -1,0 +1,27 @@
+name: Actualizar datos Jira
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Cada día a las 6:00 UTC (8:00 hora España)
+  workflow_dispatch:        # También permite lanzarlo manualmente desde GitHub
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Descargar datos de Jira
+        env:
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        run: |
+          python3 fetch_jira.py
+
+      - name: Guardar data.json en el repositorio
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --cached --quiet || git commit -m "Actualización automática de datos Jira $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

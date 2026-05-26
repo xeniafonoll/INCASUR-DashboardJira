@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Incidencias INCASUR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1117;--bg2:#1a1d27;--bg3:#22263a;--card:#1e2235;
+    --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);
+    --text:#e8eaf6;--muted:#8b90a8;
+    --accent:#4f7ef7;--accent2:#7c3aed;
+    --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--teal:#06b6d4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  .layout{display:flex;min-height:100vh}
+
+  .sidebar{width:272px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:22px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .logo{display:flex;align-items:center;gap:10px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+  .logo .ic{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:17px}
+  .logo h2{font-size:14px;font-weight:700}.logo p{font-size:10px;color:var(--muted)}
+  .sec-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  .flabel{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+  .fsection{display:flex;flex-direction:column;gap:7px}
+
+  .btn-refresh{width:100%;padding:9px 12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn-refresh:hover{opacity:.85}
+  .spin{display:inline-block;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .multi-box{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;max-height:130px;overflow-y:auto}
+  .multi-box label{display:flex;align-items:center;gap:8px;padding:5px 9px;cursor:pointer;font-size:11px;color:var(--text);transition:background .1s}
+  .multi-box label:hover{background:var(--border)}
+  .multi-box input[type=checkbox]{accent-color:var(--accent);width:12px;height:12px}
+
+  .slider-wrap{display:flex;flex-direction:column;gap:3px}
+  .slider-wrap input[type=range]{width:100%;accent-color:var(--accent)}
+  .slider-val{font-size:11px;color:var(--muted);text-align:right}
+
+  .chk-wrap{display:flex;align-items:center;gap:8px;padding:5px 2px;cursor:pointer}
+  .chk-wrap input{accent-color:var(--accent)}
+  .chk-wrap span{font-size:11px;color:var(--text)}
+
+  .updated-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:10px;color:var(--muted);line-height:1.7}
+  .updated-box strong{color:var(--text);display:block;margin-bottom:2px}
+  .sidebar-foot{margin-top:auto;font-size:10px;color:var(--muted);line-height:1.6;padding-top:14px;border-top:1px solid var(--border)}
+
+  .main{flex:1;padding:26px 30px;min-width:0}
+  .page-header{margin-bottom:22px}
+  .page-header h1{font-size:21px;font-weight:700}
+  .page-header p{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .kpi.blue{border-top:2px solid var(--accent)}.kpi.red{border-top:2px solid var(--red)}
+  .kpi.amber{border-top:2px solid var(--amber)}.kpi.teal{border-top:2px solid var(--teal)}
+  .kpi-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
+  .kpi-val{font-size:26px;font-weight:700;line-height:1}
+  .kpi-sub{font-size:10px;color:var(--muted);margin-top:3px}
+
+  .tcard{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .thead-bar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .thead-bar h3{font-size:14px;font-weight:600}
+  .tactions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .search{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 11px;color:var(--text);font-size:12px;outline:none;width:210px;transition:border-color .15s}
+  .search:focus{border-color:var(--accent)}.search::placeholder{color:var(--muted)}
+  .btn-xl{padding:7px 13px;background:var(--bg3);color:var(--green);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:5px}
+  .btn-xl:hover{background:rgba(34,197,94,.1)}
+
+  .twrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  thead tr{border-bottom:1px solid var(--border2)}
+  th{padding:9px 13px;text-align:left;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;white-space:nowrap;cursor:pointer;user-select:none;background:var(--bg2);transition:color .15s}
+  th:hover{color:var(--text)}th.sorted .si{opacity:1;color:var(--accent)}.si{margin-left:3px;opacity:.4}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+  tbody tr:last-child{border-bottom:none}tbody tr:hover{background:rgba(79,126,247,.05)}
+  td{padding:9px 13px;white-space:nowrap}
+  td.wrap{white-space:normal;max-width:240px;line-height:1.4;font-size:10px;color:var(--muted)}
+  td.route{font-size:10px;color:var(--muted);max-width:190px;white-space:normal;line-height:1.5}
+
+  .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+  .b-blue{background:rgba(79,126,247,.15);color:#7ba7f7}.b-amber{background:rgba(245,158,11,.15);color:#fbbf24}
+  .b-red{background:rgba(239,68,68,.15);color:#f87171}.b-green{background:rgba(34,197,94,.15);color:#4ade80}
+  .b-gray{background:rgba(139,144,168,.12);color:var(--muted)}.b-teal{background:rgba(6,182,212,.15);color:#22d3ee}
+
+  .lnk{color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(79,126,247,.1);border:1px solid rgba(79,126,247,.2);transition:background .15s}
+  .lnk:hover{background:rgba(79,126,247,.2)}
+
+  .dc{font-variant-numeric:tabular-nums}
+  .crit{color:var(--red);font-weight:700}.warn{color:var(--amber);font-weight:600}.ok{color:var(--green)}
+
+  .pag{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .pag-info{font-size:11px;color:var(--muted)}.pag-btns{display:flex;gap:5px}
+  .pb{padding:5px 9px;background:var(--bg3);color:var(--muted);border:1px solid var(--border2);border-radius:6px;font-size:11px;cursor:pointer;transition:all .15s}
+  .pb:hover{color:var(--text);background:var(--bg2)}.pb.act{background:var(--accent);color:#fff;border-color:var(--accent)}.pb:disabled{opacity:.3;cursor:default}
+
+  .state{text-align:center;padding:56px 20px;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .state h3{font-size:15px;font-weight:600}.state p{font-size:12px;color:var(--muted);max-width:420px;line-height:1.5}
+  .dots{display:flex;gap:5px}
+  .dots span{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:bounce 1.2s ease-in-out infinite}
+  .dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+  .empty{text-align:center;padding:38px;color:var(--muted);font-size:13px}
+
+  @media(max-width:880px){.layout{flex-direction:column}.sidebar{width:100%;height:auto;position:static}.main{padding:18px 14px}.kpis{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.kpis{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="ic">📊</div>
+      <div><h2>INCASUR</h2><p>Control de Incidencias</p></div>
+    </div>
+
+    <div id="updated-box" class="updated-box">
+      <strong>Última actualización</strong>
+      <span id="last-updated">Cargando...</span>
+    </div>
+
+    <div><div class="sec-title">Filtros</div></div>
+    <div class="fsection"><div class="flabel">Estado</div><div class="multi-box" id="f-estados"></div></div>
+    <div class="fsection"><div class="flabel">Departamento Actual</div><div class="multi-box" id="f-dptos"></div></div>
+    <div class="fsection">
+      <div class="flabel">Mínimo días abierta</div>
+      <div class="slider-wrap">
+        <input type="range" id="sl-dias" min="0" max="365" value="0" oninput="onSlider(this)">
+        <span class="slider-val"><span id="sl-out">0</span> días</span>
+      </div>
+    </div>
+    <label class="chk-wrap"><input type="checkbox" id="chk-rec" onchange="applyFilters()"><span>Solo con reclamaciones (&gt;0)</span></label>
+    <label class="chk-wrap"><input type="checkbox" id="chk-reb" onchange="applyFilters()"><span>Solo con rebotes a Front Office (&gt;0)</span></label>
+
+    <div class="sidebar-foot">
+      Datos actualizados automáticamente cada día a las 8:00h.<br>
+      Fuente: Jira INCASUR
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <h1>Cuadro de Mando — Control INCASUR</h1>
+      <p>Incidencias sin resolver · rutas de departamentos · cuellos de botella</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi blue"><div class="kpi-lbl">Tickets Abiertos</div><div class="kpi-val" id="k-total">—</div><div class="kpi-sub" id="k-delta"></div></div>
+      <div class="kpi red"><div class="kpi-lbl">Máx Días Abierto</div><div class="kpi-val" id="k-max">—</div></div>
+      <div class="kpi amber"><div class="kpi-lbl">Promedio Atascado Dpto</div><div class="kpi-val" id="k-avg">—</div></div>
+      <div class="kpi teal"><div class="kpi-lbl">Total Reclamaciones</div><div class="kpi-val" id="k-rec">—</div></div>
+    </div>
+    <div class="tcard">
+      <div class="thead-bar">
+        <h3>Vista de Control de Operaciones</h3>
+        <div class="tactions">
+          <input class="search" type="text" id="search" placeholder="🔍 Buscar clave, resumen…" oninput="applyFilters()">
+          <button class="btn-xl" onclick="exportExcel()">⬇ Excel</button>
+        </div>
+      </div>
+      <div id="tbl-wrap"></div>
+      <div class="pag" id="pag" style="display:none"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const PAGE_SIZE = 50;
+let allData=[], filteredData=[], currentPage=1;
+let sortCol='Días Abierta Totales', sortAsc=false;
+
+async function loadData(){
+  showLoading();
+  try{
+    // Añade ?t=FECHA para evitar caché del navegador y siempre leer el JSON más reciente
+    const today = new Date().toISOString().slice(0,10);
+    const res = await fetch(`data.json?t=${today}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+
+    allData = json.issues || [];
+
+    // Mostrar cuándo se actualizaron los datos
+    if(json.updated_at){
+      const d = new Date(json.updated_at);
+      document.getElementById('last-updated').textContent =
+        d.toLocaleDateString('es-ES') + ' ' + d.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}) + 'h';
+    }
+
+    buildFilters();
+    applyFilters();
+  }catch(e){
+    showError(e.message);
+  }
+}
+
+function buildFilters(){
+  const estados=[...new Set(allData.map(r=>r['Estado']))].sort();
+  const dptos=[...new Set(allData.map(r=>r['Departamento Responsable']))].sort();
+  const maxD=allData.length?Math.max(...allData.map(r=>r['Días Abierta Totales'])):100;
+  document.getElementById('f-estados').innerHTML=estados.map(e=>`<label><input type="checkbox" checked value="${e}" onchange="applyFilters()"> ${e}</label>`).join('');
+  document.getElementById('f-dptos').innerHTML=dptos.map(d=>`<label><input type="checkbox" checked value="${d}" onchange="applyFilters()"> ${d}</label>`).join('');
+  const sl=document.getElementById('sl-dias');sl.max=maxD>0?maxD:100;sl.value=0;document.getElementById('sl-out').textContent=0;
+}
+
+function onSlider(el){document.getElementById('sl-out').textContent=el.value;applyFilters();}
+
+function applyFilters(){
+  const estados=[...document.querySelectorAll('#f-estados input:checked')].map(c=>c.value);
+  const dptos=[...document.querySelectorAll('#f-dptos input:checked')].map(c=>c.value);
+  const minD=parseInt(document.getElementById('sl-dias').value)||0;
+  const sR=document.getElementById('chk-rec').checked,sB=document.getElementById('chk-reb').checked;
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  filteredData=allData.filter(r=>{
+    if(!estados.includes(r['Estado']))return false;
+    if(!dptos.includes(r['Departamento Responsable']))return false;
+    if(r['Días Abierta Totales']<minD)return false;
+    if(sR&&r['Nº Reclamaciones']<=0)return false;
+    if(sB&&r['Rebotes a Front-Office']<=0)return false;
+    if(q&&!r['Incidencia'].toLowerCase().includes(q)&&!r['Resumen'].toLowerCase().includes(q)&&!r['Departamento Responsable'].toLowerCase().includes(q))return false;
+    return true;
+  });
+  sortData();updateKPIs();currentPage=1;renderTable();renderPag();
+}
+
+function sortData(){
+  filteredData.sort((a,b)=>{
+    const va=a[sortCol],vb=b[sortCol];
+    if(typeof va==='number')return sortAsc?va-vb:vb-va;
+    return sortAsc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
+  });
+}
+function setSort(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=false;}sortData();renderTable();renderPag();}
+
+function updateKPIs(){
+  const n=filteredData.length,all=allData.length;
+  document.getElementById('k-total').textContent=n;
+  document.getElementById('k-delta').textContent=n!==all?`${n} de ${all} totales`:`${all} total`;
+  document.getElementById('k-max').textContent=n?Math.max(...filteredData.map(r=>r['Días Abierta Totales']))+'d':'—';
+  const avg=n?filteredData.reduce((s,r)=>s+r['Días atascada en Dpto Actual'],0)/n:0;
+  document.getElementById('k-avg').textContent=n?avg.toFixed(1)+'d':'—';
+  document.getElementById('k-rec').textContent=n?filteredData.reduce((s,r)=>s+r['Nº Reclamaciones'],0):0;
+}
+
+const COLS=[
+  {k:'Incidencia',l:'Incidencia'},{k:'Fecha de Creación',l:'Creación'},{k:'Estado',l:'Estado'},
+  {k:'Departamento Responsable',l:'Departamento'},{k:'Días Abierta Totales',l:'Días Abierta'},
+  {k:'Días atascada en Dpto Actual',l:'Atascada Dpto'},{k:'Días desde Última Modificación',l:'Última Mod.'},
+  {k:'Rebotes a Front-Office',l:'Rebotes FO'},{k:'Nº Reclamaciones',l:'Reclam.'},
+  {k:'Ruta de Departamentos',l:'Ruta Dptos'},{k:'Resumen',l:'Resumen'},{k:'_link',l:'Enlace'}
+];
+function dClass(d){return d>90?'crit':d>30?'warn':'ok';}
+function eBadge(e){
+  const m={'IN PROGRESS':'b-blue','EN CURSO':'b-blue','OPEN':'b-teal','ABIERTO':'b-teal',
+           'BLOCKED':'b-red','BLOQUEADO':'b-red','WAITING':'b-amber','PENDIENTE':'b-amber','TODO':'b-gray'};
+  return`<span class="badge ${m[e.toUpperCase()]||'b-gray'}">${e}</span>`;
+}
+
+function renderTable(){
+  const w=document.getElementById('tbl-wrap');
+  if(!filteredData.length){w.innerHTML='<div class="empty">No hay incidencias que coincidan con los filtros activos.</div>';document.getElementById('pag').style.display='none';return;}
+  const start=(currentPage-1)*PAGE_SIZE,page=filteredData.slice(start,start+PAGE_SIZE);
+  const th=COLS.map(c=>{const s=c.k===sortCol;return`<th class="${s?'sorted':''}" onclick="setSort('${c.k}')">${c.l}<span class="si">${s?(sortAsc?'↑':'↓'):'↕'}</span></th>`;}).join('');
+  const tb=page.map(r=>`<tr>
+    <td><strong style="color:var(--accent);font-size:11px">${r['Incidencia']}</strong></td>
+    <td style="color:var(--muted);font-size:10px">${r['Fecha de Creación']}</td>
+    <td>${eBadge(r['Estado'])}</td>
+    <td style="font-size:11px">${r['Departamento Responsable']}</td>
+    <td class="dc ${dClass(r['Días Abierta Totales'])}">${r['Días Abierta Totales']}d</td>
+    <td class="dc ${dClass(r['Días atascada en Dpto Actual'])}">${r['Días atascada en Dpto Actual']}d</td>
+    <td class="dc" style="color:var(--muted)">${r['Días desde Última Modificación']}d</td>
+    <td>${r['Rebotes a Front-Office']>0?`<span class="badge b-amber">${r['Rebotes a Front-Office']}</span>`:'<span style="color:var(--muted)">0</span>'}</td>
+    <td>${r['Nº Reclamaciones']>0?`<span style="color:var(--red);font-weight:700">${r['Nº Reclamaciones']}</span>`:'<span style="color:var(--muted)">0</span>'}</td>
+    <td class="route">${r['Ruta de Departamentos']}</td>
+    <td class="wrap">${r['Resumen']}</td>
+    <td><a class="lnk" href="${r['URL']}" target="_blank">Abrir ↗</a></td>
+  </tr>`).join('');
+  w.innerHTML=`<div class="twrap"><table><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table></div>`;
+  document.getElementById('pag').style.display='flex';
+}
+
+function renderPag(){
+  const totalP=Math.ceil(filteredData.length/PAGE_SIZE),el=document.getElementById('pag');
+  if(totalP<=1){el.style.display='none';return;}
+  el.style.display='flex';
+  const s=(currentPage-1)*PAGE_SIZE+1,e2=Math.min(currentPage*PAGE_SIZE,filteredData.length);
+  let pages='';
+  for(let i=1;i<=totalP;i++){
+    if(i===1||i===totalP||(i>=currentPage-1&&i<=currentPage+1))pages+=`<button class="pb ${i===currentPage?'act':''}" onclick="goPage(${i})">${i}</button>`;
+    else if(i===currentPage-2||i===currentPage+2)pages+=`<span style="color:var(--muted);padding:0 3px">…</span>`;
+  }
+  el.innerHTML=`<div class="pag-info">Mostrando ${s}–${e2} de ${filteredData.length}</div><div class="pag-btns"><button class="pb" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>← Ant</button>${pages}<button class="pb" onclick="goPage(${currentPage+1})" ${currentPage===totalP?'disabled':''}>Sig →</button></div>`;
+}
+function goPage(p){const t=Math.ceil(filteredData.length/PAGE_SIZE);if(p<1||p>t)return;currentPage=p;renderTable();renderPag();window.scrollTo({top:0,behavior:'smooth'});}
+
+function exportExcel(){
+  if(!filteredData.length){alert('No hay datos para exportar.');return;}
+  const rows=filteredData.map(r=>({'Incidencia':r['Incidencia'],'Fecha de Creación':r['Fecha de Creación'],'Estado':r['Estado'],'Departamento Responsable':r['Departamento Responsable'],'Días Abierta Totales':r['Días Abierta Totales'],'Días atascada en Dpto Actual':r['Días atascada en Dpto Actual'],'Días desde Última Modificación':r['Días desde Última Modificación'],'Rebotes a Front-Office':r['Rebotes a Front-Office'],'Nº Reclamaciones':r['Nº Reclamaciones'],'Ruta de Departamentos':r['Ruta de Departamentos'],'Resumen':r['Resumen'],'Enlace Jira':r['URL']}));
+  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Control INCASUR');
+  XLSX.writeFile(wb,`Control_INCASUR_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function showLoading(){
+  document.getElementById('tbl-wrap').innerHTML='<div class="state"><div class="dots"><span></span><span></span><span></span></div><h3>Cargando datos...</h3><p>Leyendo el último volcado de Jira.</p></div>';
+  document.getElementById('pag').style.display='none';
+}
+function showError(msg){
+  document.getElementById('tbl-wrap').innerHTML=`<div class="state"><div style="font-size:36px">⚠️</div><h3>Error al cargar datos</h3><p>${msg}</p><p style="font-size:10px;color:var(--muted);margin-top:8px">Comprueba que el archivo data.json existe en el repositorio y que la GitHub Action se ha ejecutado al menos una vez.</p></div>`;
+}
+
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>
